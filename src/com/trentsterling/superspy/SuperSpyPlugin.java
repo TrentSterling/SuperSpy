@@ -69,7 +69,16 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 	public void onChatMessage(AsyncPlayerChatEvent e)
 	{
 		Player p = e.getPlayer();
-		messageOps("CHAT: <" + p.getDisplayName() + "> " + e.getMessage());
+
+		// INTEGRATE WITH LOCALCHATPLUGIN
+		String chatmode = String.valueOf(p.getMetadata("ChatMode").get(0).asString());
+
+		if (chatmode == "LOCAL")
+		{
+			messageOps("CHAT: <" + p.getDisplayName() + "> " + e.getMessage());
+
+		}
+
 	}
 
 	@EventHandler
@@ -86,10 +95,6 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 		{
 			// messageOps("CMD: <" + p.getDisplayName() + "> " + message);
 			messageOps("CMD: <" + p.getDisplayName() + "> " + ChatColor.DARK_RED + "REGISTERED");
-		}
-		else if (message.startsWith("/g"))
-		{
-			// messageOps("CMD: <" + p.getDisplayName() + "> " + message);
 		}
 		else
 		{
