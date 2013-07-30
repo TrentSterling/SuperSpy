@@ -1,0 +1,12 @@
+name: SuperSpy
+main: com.trentsterling.superspy.SuperSpyPlugin
+version: 0.1
+description: Spy on players chat, commands, and everything!
+author: Trent Sterling
+load:
+    -POSTWORLD
+commands:
+    superspy:
+        description: Spy on players chat, commands, and everything!
+        usage: /superspy
+        aliases: ss
