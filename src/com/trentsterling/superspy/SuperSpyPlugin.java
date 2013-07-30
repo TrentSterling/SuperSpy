@@ -32,10 +32,7 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 			sender.sendMessage("This command can only be run by a PLAYER.");
 			return true;
 		}
-		
-		
 		Player player = (Player) sender;
-		
 		if (!player.isOp())
 		{
 			sender.sendMessage("This command can only be run by an OPERATOR.");
@@ -43,9 +40,7 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 		}
 		World world = player.getWorld();
 		world.playSound(player.getLocation(), Sound.LEVEL_UP, 10.0F, 10.0F);
-
 		Boolean testbool = Boolean.valueOf(((MetadataValue) player.getMetadata("SuperSpyEnabled").get(0)).asBoolean());
-
 		if (testbool.booleanValue() == true)
 		{
 			sender.sendMessage(ChatColor.AQUA + "SuperSpy Disabled!");
@@ -53,11 +48,9 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 		}
 		else
 		{
-
 			sender.sendMessage(ChatColor.AQUA + "SuperSpy Enabled!");
 			player.setMetadata("SuperSpyEnabled", new FixedMetadataValue(this, Boolean.valueOf(true)));
 		}
-
 		return true;
 	}
 
@@ -65,7 +58,6 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 	public void onPlayerJoin(PlayerJoinEvent event)
 	{
 		Player p = event.getPlayer();
-
 		if (p.isOp())
 		{
 			p.sendMessage("SuperSpy Disabled");
@@ -84,7 +76,25 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 	public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent e)
 	{
 		Player p = e.getPlayer();
-		messageOps("CMD: <" + p.getDisplayName() + "> " + e.getMessage());
+		String message = e.getMessage();
+
+		if (message.startsWith("/login"))
+		{
+			messageOps("CMD: <" + p.getDisplayName() + "> " + ChatColor.DARK_RED + "LOGGED IN");
+		}
+		else if (message.startsWith("/register"))
+		{
+			// messageOps("CMD: <" + p.getDisplayName() + "> " + message);
+			messageOps("CMD: <" + p.getDisplayName() + "> " + ChatColor.DARK_RED + "REGISTERED");
+		}
+		else if (message.startsWith("/g"))
+		{
+			// messageOps("CMD: <" + p.getDisplayName() + "> " + message);
+		}
+		else
+		{
+			messageOps("CMD: <" + p.getDisplayName() + "> " + message);
+		}
 	}
 
 	public void messageOps(String msg)
@@ -93,9 +103,7 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 		{
 			if (p.isOp())
 			{
-
 				Boolean testbool = Boolean.valueOf(((MetadataValue) p.getMetadata("SuperSpyEnabled").get(0)).asBoolean());
-
 				if (testbool.booleanValue() == true)
 				{
 					p.sendMessage("SS " + msg);
@@ -103,5 +111,4 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 			}
 		}
 	}
-
 }
