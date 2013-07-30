@@ -33,7 +33,7 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 			return true;
 		}
 		Player player = (Player) sender;
-		if (!player.isOp())
+		if (!player.isOp() && !player.hasPermission("admin"))
 		{
 			sender.sendMessage("This command can only be run by an OPERATOR.");
 			return true;
@@ -58,7 +58,7 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 	public void onPlayerJoin(PlayerJoinEvent event)
 	{
 		Player p = event.getPlayer();
-		if (p.isOp())
+		if (p.isOp() || p.hasPermission("admin"))
 		{
 			p.sendMessage("SuperSpy Disabled");
 			p.setMetadata("SuperSpyEnabled", new FixedMetadataValue(this, Boolean.valueOf(false)));
@@ -106,7 +106,7 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 	{
 		for (Player p : Bukkit.getOnlinePlayers())
 		{
-			if (p.isOp())
+			if (p.isOp() || p.hasPermission("admin"))
 			{
 				Boolean testbool = Boolean.valueOf(((MetadataValue) p.getMetadata("SuperSpyEnabled").get(0)).asBoolean());
 				if (testbool.booleanValue() == true)
