@@ -19,12 +19,22 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class SuperSpyPlugin extends JavaPlugin implements Listener
 {
 
+	@Override
 	public void onEnable()
 	{
 		super.onEnable();
 		getServer().getPluginManager().registerEvents(this, this);
+
+		for (Player p : Bukkit.getOnlinePlayers())
+		{
+
+			p.setMetadata("SuperSpyEnabled", new FixedMetadataValue(this, Boolean.valueOf(false)));
+
+		}
+
 	}
 
+	@Override
 	public boolean onCommand(CommandSender sender, Command arg1, String arg2, String[] arg3)
 	{
 		if (!(sender instanceof Player))
@@ -40,7 +50,7 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 		}
 		World world = player.getWorld();
 		world.playSound(player.getLocation(), Sound.LEVEL_UP, 10.0F, 10.0F);
-		Boolean testbool = Boolean.valueOf(((MetadataValue) player.getMetadata("SuperSpyEnabled").get(0)).asBoolean());
+		Boolean testbool = Boolean.valueOf(player.getMetadata("SuperSpyEnabled").get(0).asBoolean());
 		if (testbool.booleanValue() == true)
 		{
 			sender.sendMessage(ChatColor.AQUA + "SuperSpy Disabled!");
@@ -61,8 +71,8 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 		if (p.isOp() || p.hasPermission("admin"))
 		{
 			p.sendMessage("SuperSpy Disabled");
-			p.setMetadata("SuperSpyEnabled", new FixedMetadataValue(this, Boolean.valueOf(false)));
 		}
+		p.setMetadata("SuperSpyEnabled", new FixedMetadataValue(this, Boolean.valueOf(false)));
 	}
 
 	@EventHandler
@@ -108,7 +118,7 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 		{
 			if (p.isOp() || p.hasPermission("admin"))
 			{
-				Boolean testbool = Boolean.valueOf(((MetadataValue) p.getMetadata("SuperSpyEnabled").get(0)).asBoolean());
+				Boolean testbool = Boolean.valueOf(p.getMetadata("SuperSpyEnabled").get(0).asBoolean());
 				if (testbool.booleanValue() == true)
 				{
 					p.sendMessage("SS " + msg);
