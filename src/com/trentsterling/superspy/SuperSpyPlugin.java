@@ -1,5 +1,7 @@
 package com.trentsterling.superspy;
 
+import java.util.List;
+
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Sound;
@@ -18,48 +20,137 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class SuperSpyPlugin extends JavaPlugin implements Listener
 {
+	/*
+	 * UTILITIES - Metadata, Get players, check if console
+	 * 
+	 * FIXME: Move these utils to a seperate library.
+	 */
 
+	public Boolean isSenderPlayer(CommandSender sender)
+	{
+		if (sender instanceof Player)
+		{
+			return true;
+		}
+		return false;
+	}
+
+	public Boolean isSenderConsole(CommandSender sender)
+	{
+		if (sender instanceof Player)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	public Boolean hasNeitherOpNorPermission(Player player, String perm)
+	{
+		if (!player.isOp() && !player.hasPermission(perm))
+		{
+			return true;
+		}
+		return false;
+	}
+
+	public Boolean hasOpOrPermission(Player player, String perm)
+	{
+		if (player.isOp() || player.hasPermission(perm))
+		{
+			return true;
+		}
+		return false;
+	}
+
+	public void setMetadata(Player player, String key, Object value)
+	{
+		player.setMetadata(key, new FixedMetadataValue(this, value));
+	}
+
+	public Object getMetadata(Player player, String key)
+	{
+		List<MetadataValue> values = player.getMetadata(key);
+		// why are we iterating?
+		for (MetadataValue value : values)
+		{
+			return value.value();
+		}
+		return null;
+	}
+
+	public Boolean hasMetadata(Player player, String key)
+	{
+		if (getMetadata(player, key) != null)
+		{
+			return true;
+		}
+		return false;
+
+	}
+
+	/**
+	 * Meat of plugin below
+	 */
 	@Override
 	public void onEnable()
 	{
 		super.onEnable();
 		getServer().getPluginManager().registerEvents(this, this);
-
 		for (Player p : Bukkit.getOnlinePlayers())
 		{
-
-			p.setMetadata("SuperSpyEnabled", new FixedMetadataValue(this, Boolean.valueOf(false)));
-
+			this.setMetadata(p, "SuperSpyEnabled", false);
 		}
-
 	}
 
 	@Override
 	public boolean onCommand(CommandSender sender, Command arg1, String arg2, String[] arg3)
 	{
-		if (!(sender instanceof Player))
+		// TODO: Set up onPlayerCommand and onConsoleCommand hooks
+		// Check to see if sender is console
+		if (isSenderConsole(sender))
 		{
-			sender.sendMessage("This command can only be run by a PLAYER.");
+			sender.sendMessage("This command can't be run from CONSOLE.");
 			return true;
 		}
+
+		// Cast sender as player
 		Player player = (Player) sender;
-		if (!player.isOp() && !player.hasPermission("admin"))
+
+		// Check to see if player has perms
+		if (hasNeitherOpNorPermission(player, "superspy.admin"))
 		{
-			sender.sendMessage("This command can only be run by an OPERATOR.");
+			sender.sendMessage("This command requires OPERATOR or STAFF permissions.");
 			return true;
 		}
+
+		// Play a twinkle!
 		World world = player.getWorld();
 		world.playSound(player.getLocation(), Sound.LEVEL_UP, 10.0F, 10.0F);
-		Boolean testbool = Boolean.valueOf(player.getMetadata("SuperSpyEnabled").get(0).asBoolean());
+
+		// Temporary state saver. Load metadata into it if it exists.
+		Boolean testbool = true;// fake on - means we disable on next steps
+		if (hasMetadata(player, "SuperSpyEnabled"))
+		{
+			testbool = (Boolean) getMetadata(player, "SuperSpyEnabled");
+		}
+		else
+		{
+			// BUGFIX: Somehow this player doesnt have the metadata. Surely we've added it on join? But miracles happen.
+			setMetadata(player, "SuperSpyEnabled", false);
+			sender.sendMessage(ChatColor.AQUA + "SuperSpy Disabled!");
+			return true;
+		}
+
+		// OK, metadata was set before we ran the command. Lets toggle whatever the setting is.
 		if (testbool.booleanValue() == true)
 		{
 			sender.sendMessage(ChatColor.AQUA + "SuperSpy Disabled!");
-			player.setMetadata("SuperSpyEnabled", new FixedMetadataValue(this, Boolean.valueOf(false)));
+			setMetadata(player, "SuperSpyEnabled", false);
 		}
 		else
 		{
 			sender.sendMessage(ChatColor.AQUA + "SuperSpy Enabled!");
-			player.setMetadata("SuperSpyEnabled", new FixedMetadataValue(this, Boolean.valueOf(true)));
+			setMetadata(player, "SuperSpyEnabled", true);
 		}
 		return true;
 	}
@@ -68,11 +159,12 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 	public void onPlayerJoin(PlayerJoinEvent event)
 	{
 		Player p = event.getPlayer();
-		if (p.isOp() || p.hasPermission("admin"))
+		// On join, lets set superspy off
+		if (hasOpOrPermission(p, "superspy.admin"))
 		{
 			p.sendMessage("SuperSpy Disabled");
 		}
-		p.setMetadata("SuperSpyEnabled", new FixedMetadataValue(this, Boolean.valueOf(false)));
+		setMetadata(p, "SuperSpyEnabled", false);
 	}
 
 	@EventHandler
@@ -81,12 +173,22 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 		Player p = e.getPlayer();
 
 		// INTEGRATE WITH LOCALCHATPLUGIN
-		String chatmode = String.valueOf(p.getMetadata("ChatMode").get(0).asString());
+		String currentChatMode = "GLOBAL";
 
-		if (chatmode == "LOCAL")
+		// Check to see if metadata exists
+		if (hasMetadata(p, "ChatMode"))
 		{
-			messageOps("CHAT: <" + p.getDisplayName() + "> " + e.getMessage());
+			currentChatMode = (String) getMetadata(p, "ChatMode");
+		}
 
+		// TODO: Only display chat to the spy if its too far away to be heard with localchat Global and Admin chat would normally show up to anyone using superspy anyway.
+		// Will there ever be someone with superspy and not adminchat? Technically people couldnt spy on adminchat or global - this spy is for local only at the moment.
+		// Mostly because its easier than sorting all the chattypes. Too many duplicates if we spy on all chat commands existent.
+		// This covers all cases in EG servers so far.
+		// It is...sufficient.
+		if (currentChatMode == "LOCAL")
+		{
+			messageOpsAndPlayersWithPermission("CHAT: <" + p.getDisplayName() + "> " + e.getMessage());
 		}
 
 	}
@@ -99,29 +201,38 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 
 		if (message.startsWith("/login"))
 		{
-			messageOps("CMD: <" + p.getDisplayName() + "> " + ChatColor.DARK_RED + "LOGGED IN");
+			messageOpsAndPlayersWithPermission("CMD: <" + p.getDisplayName() + "> " + ChatColor.DARK_RED + "LOGGED IN");
 		}
 		else if (message.startsWith("/register"))
 		{
-			// messageOps("CMD: <" + p.getDisplayName() + "> " + message);
-			messageOps("CMD: <" + p.getDisplayName() + "> " + ChatColor.DARK_RED + "REGISTERED");
+			messageOpsAndPlayersWithPermission("CMD: <" + p.getDisplayName() + "> " + ChatColor.DARK_RED + "REGISTERED");
 		}
 		else
 		{
-			messageOps("CMD: <" + p.getDisplayName() + "> " + message);
+			messageOpsAndPlayersWithPermission("CMD: <" + p.getDisplayName() + "> " + message);
 		}
 	}
 
-	public void messageOps(String msg)
+	public void messageOpsAndPlayersWithPermission(String msg)
 	{
 		for (Player p : Bukkit.getOnlinePlayers())
 		{
-			if (p.isOp() || p.hasPermission("admin"))
+			// Checks to make sure player always has permission.
+			// If demoted ingame, SS messages wont get through, even without disabling SS via command.
+			// TODO: If demotion is detected (SS enabled, no perms), disable SS
+			if (hasOpOrPermission(p, "superspy.admin"))
 			{
-				Boolean testbool = Boolean.valueOf(p.getMetadata("SuperSpyEnabled").get(0).asBoolean());
-				if (testbool.booleanValue() == true)
+				// If metadata exists
+				if (this.hasMetadata(p, "SuperSpyEnabled"))
 				{
-					p.sendMessage("SS " + msg);
+					// Grab the data
+					Boolean testbool = (Boolean) getMetadata(p, "SuperSpyEnabled");
+
+					// If data == true, superspy is enabled on this player with permissions
+					if (testbool == true)
+					{
+						p.sendMessage("SS " + msg);
+					}
 				}
 			}
 		}
