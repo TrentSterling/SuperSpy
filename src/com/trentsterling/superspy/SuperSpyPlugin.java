@@ -85,7 +85,6 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 			return true;
 		}
 		return false;
-
 	}
 
 	/**
@@ -98,7 +97,7 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 		getServer().getPluginManager().registerEvents(this, this);
 		for (Player p : Bukkit.getOnlinePlayers())
 		{
-			this.setMetadata(p, "SuperSpyEnabled", false);
+			forceDisableSpy(p);
 		}
 	}
 
@@ -128,31 +127,40 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 		world.playSound(player.getLocation(), Sound.LEVEL_UP, 10.0F, 10.0F);
 
 		// Temporary state saver. Load metadata into it if it exists.
-		Boolean testbool = true;// fake on - means we disable on next steps
+		Boolean isCurrentlySpyEnabled = true;// fake on - means we disable on next steps
 		if (hasMetadata(player, "SuperSpyEnabled"))
 		{
-			testbool = (Boolean) getMetadata(player, "SuperSpyEnabled");
+			isCurrentlySpyEnabled = (Boolean) getMetadata(player, "SuperSpyEnabled");// get real stored true/false
 		}
 		else
 		{
-			// BUGFIX: Somehow this player doesnt have the metadata. Surely we've added it on join? But miracles happen.
-			setMetadata(player, "SuperSpyEnabled", false);
-			sender.sendMessage(ChatColor.AQUA + "SuperSpy Disabled!");
+			// BUGPATCH: Somehow this player doesnt have the metadata. Surely we've added it on join? But miracles happen.
+			forceDisableSpy(player);// sets flag disabled
 			return true;
 		}
 
 		// OK, metadata was set before we ran the command. Lets toggle whatever the setting is.
-		if (testbool.booleanValue() == true)
+		if (isCurrentlySpyEnabled.booleanValue() == true)
 		{
-			sender.sendMessage(ChatColor.AQUA + "SuperSpy Disabled!");
-			setMetadata(player, "SuperSpyEnabled", false);
+			forceDisableSpy(player);
 		}
 		else
 		{
-			sender.sendMessage(ChatColor.AQUA + "SuperSpy Enabled!");
-			setMetadata(player, "SuperSpyEnabled", true);
+			forceEnableSpy(player);
 		}
 		return true;
+	}
+
+	public void forceEnableSpy(Player player)
+	{
+		player.sendMessage(ChatColor.AQUA + "SuperSpy Enabled!");
+		setMetadata(player, "SuperSpyEnabled", true);
+	}
+
+	public void forceDisableSpy(Player player)
+	{
+		player.sendMessage(ChatColor.AQUA + "SuperSpy Disabled!");
+		setMetadata(player, "SuperSpyEnabled", false);
 	}
 
 	@EventHandler
@@ -160,11 +168,7 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 	{
 		Player p = event.getPlayer();
 		// On join, lets set superspy off
-		if (hasOpOrPermission(p, "superspy.admin"))
-		{
-			p.sendMessage("SuperSpy Disabled");
-		}
-		setMetadata(p, "SuperSpyEnabled", false);
+		forceDisableSpy(p);
 	}
 
 	@EventHandler
@@ -176,9 +180,9 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 		String currentChatMode = "GLOBAL";
 
 		// Check to see if metadata exists
-		if (hasMetadata(p, "ChatMode"))
+		if (hasMetadata(p, "chatmode"))
 		{
-			currentChatMode = (String) getMetadata(p, "ChatMode");
+			currentChatMode = (String) getMetadata(p, "chatmode");
 		}
 
 		// TODO: Only display chat to the spy if its too far away to be heard with localchat Global and Admin chat would normally show up to anyone using superspy anyway.
@@ -188,7 +192,7 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 		// It is...sufficient.
 		if (currentChatMode == "LOCAL")
 		{
-			messageOpsAndPlayersWithPermission("CHAT: <" + p.getDisplayName() + "> " + e.getMessage());
+			messageOpsAndPlayersWithPermission("CHAT: <" + p.getDisplayName() + "> " + ChatColor.DARK_GREEN + e.getMessage());
 		}
 
 	}
@@ -199,18 +203,43 @@ public class SuperSpyPlugin extends JavaPlugin implements Listener
 		Player p = e.getPlayer();
 		String message = e.getMessage();
 
-		if (message.startsWith("/login"))
+		// Block login and register commands from sight
+		if (commandMatchString(message, "/login"))
 		{
 			messageOpsAndPlayersWithPermission("CMD: <" + p.getDisplayName() + "> " + ChatColor.DARK_RED + "LOGGED IN");
 		}
-		else if (message.startsWith("/register"))
+		else if (commandMatchString(message, "/register"))
 		{
 			messageOpsAndPlayersWithPermission("CMD: <" + p.getDisplayName() + "> " + ChatColor.DARK_RED + "REGISTERED");
 		}
+		else if (commandMatchString(message, "/l "))
+		{
+			messageOpsAndPlayersWithPermission("CMD: <" + p.getDisplayName() + "> " + ChatColor.DARK_RED + "Tried using /l for login or something");
+		}
+		else if (commandMatchString(message, "/change"))
+		{
+			messageOpsAndPlayersWithPermission("CMD: <" + p.getDisplayName() + "> " + ChatColor.DARK_RED + "Changed PW");
+		}
+		else if (commandMatchString(message, "/xauth"))
+		{
+			messageOpsAndPlayersWithPermission("CMD: <" + p.getDisplayName() + "> " + ChatColor.DARK_RED + "is messing with XAUTH");
+		}
+		else if (commandMatchString(message, "/msg") || commandMatchString(message, "/m ") || commandMatchString(message, "/r ") || commandMatchString(message, "/w ")
+				|| commandMatchString(message, "/whisper") || commandMatchString(message, "/tell") || commandMatchString(message, "/t "))
+		{
+			messageOpsAndPlayersWithPermission("MSG: <" + p.getDisplayName() + "> " + ChatColor.YELLOW + message);
+		}
 		else
 		{
-			messageOpsAndPlayersWithPermission("CMD: <" + p.getDisplayName() + "> " + message);
+			// Go ahead and forward command
+			messageOpsAndPlayersWithPermission("CMD: <" + p.getDisplayName() + "> " + ChatColor.RED + message);
 		}
+	}
+
+	public Boolean commandMatchString(String command, String match)
+	{
+
+		return command.toLowerCase().startsWith(match);
 	}
 
 	public void messageOpsAndPlayersWithPermission(String msg)
